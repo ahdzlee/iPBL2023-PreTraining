@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../constants/app.dart';
 import '../../constants/mqtt_topics.dart';
+import '../../state/providers/listen_for_updates_provider.dart';
 import '../../state/providers/mqtt_client_manager_provider.dart';
 
 class MissionControlView extends HookConsumerWidget {
@@ -12,8 +13,12 @@ class MissionControlView extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mqttManager = ref.watch(mqttClientManagerProvider);
+    bool isLightsOn = ref.watch(isLightsOnProvider);
 
-    final isLightsOn = useState(false);
+    useEffect(() {
+      ref.watch(listenForUpdatesProvider);
+      return null;
+    }, const []);
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -26,12 +31,12 @@ class MissionControlView extends HookConsumerWidget {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Switch(
-                value: isLightsOn.value,
+                value: isLightsOn,
                 onChanged: (value) {
-                  isLightsOn.value = value;
+                  isLightsOn = value;
                   mqttManager?.publish(
                     kBedRoomLights,
-                    isLightsOn.value ? '1' : '0',
+                    isLightsOn ? '1' : '0',
                   );
                 },
               ),
@@ -40,8 +45,7 @@ class MissionControlView extends HookConsumerWidget {
           Icon(
             Icons.lightbulb_circle_rounded,
             size: 350,
-            color:
-                isLightsOn.value ? Colors.amber.shade300 : Colors.grey.shade300,
+            color: isLightsOn ? Colors.amber.shade300 : Colors.grey.shade300,
           ),
         ],
       ),
