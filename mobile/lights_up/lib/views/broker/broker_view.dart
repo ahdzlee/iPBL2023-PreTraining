@@ -1,3 +1,4 @@
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'dart:math';
 
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -5,9 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../constants/app.dart';
+import '../../state/enums/app_connection_state.dart';
 import '../../state/mqtt_client_manager.dart';
+import '../../state/providers/app_connection_state_provider.dart';
+import '../../state/providers/is_connected_provider.dart';
+import '../../state/providers/mqtt_client_manager_provider.dart';
 
-class BrokerView extends HookWidget {
+class BrokerView extends HookConsumerWidget {
   const BrokerView({super.key});
 
   void showSnackBar(BuildContext context, String message,
@@ -22,7 +27,7 @@ class BrokerView extends HookWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final serverController = useTextEditingController();
     final portController = useTextEditingController();
     final usernameController = useTextEditingController();
@@ -73,14 +78,67 @@ class BrokerView extends HookWidget {
         clientId.value = 'flutter_client_${random.nextInt(100)}';
       }
 
-      final mqttManager = MqttClientManager(
+      ref.read(mqttClientManagerProvider.notifier).state = MqttClientManager(
         server: server.value,
         port: port.value,
         username: username.value,
         password: password.value,
         clientId: clientId.value,
       );
-      mqttManager.connect();
+
+      final isConnected = ref.read(isConnectedProvider);
+      if (isConnected) {
+        ref.read(mqttClientManagerProvider)?.disconnect();
+        ref
+            .read(appConnectionStateProvider.notifier)
+            .setAppConnectionState(AppConnectionState.disconnected);
+      } else {
+        ref
+            .read(appConnectionStateProvider.notifier)
+            .setAppConnectionState(AppConnectionState.connecting);
+
+        ref.read(mqttClientManagerProvider)?.connect().then((_) {
+          ref
+              .read(appConnectionStateProvider.notifier)
+              .setAppConnectionState(AppConnectionState.connected);
+        }).catchError((err) {
+          ref
+              .read(appConnectionStateProvider.notifier)
+              .setAppConnectionState(AppConnectionState.error);
+
+          showSnackBar(context, err.toString());
+        });
+      }
+    }
+
+    IconData connStateIcon;
+    Color? connStateColor;
+    final connState = ref.watch(appConnectionStateProvider);
+    switch (connState) {
+      case AppConnectionState.connected:
+        connStateIcon = Icons.cloud_done_outlined;
+        connStateColor = Colors.teal;
+        break;
+
+      case AppConnectionState.disconnected:
+        connStateIcon = Icons.cloud_off_outlined;
+        connStateColor = Colors.brown;
+        break;
+
+      case AppConnectionState.connecting:
+        connStateIcon = Icons.cloud_upload_outlined;
+        connStateColor = Colors.amber;
+        break;
+
+      case AppConnectionState.error:
+        connStateIcon = Icons.error_outline_outlined;
+        connStateColor = Colors.redAccent;
+        break;
+
+      default:
+        connStateIcon = Icons.cloud_off_outlined;
+        connStateColor = Colors.teal;
+        break;
     }
 
     return SingleChildScrollView(
@@ -88,7 +146,7 @@ class BrokerView extends HookWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            const Icon(Icons.cloud_off_outlined, size: 150, color: Colors.teal),
+            Icon(connStateIcon, size: 150, color: connStateColor),
             const SizedBox(height: 16),
             TextField(
               controller: serverController,
@@ -133,19 +191,29 @@ class BrokerView extends HookWidget {
               ),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: handleMqttClientConnect,
-              style: ButtonStyle(
-                padding: MaterialStateProperty.all(
-                  const EdgeInsets.symmetric(
-                    horizontal: 48,
-                    vertical: 14,
+            connState == AppConnectionState.connecting
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                    onPressed: handleMqttClientConnect,
+                    style: ButtonStyle(
+                      padding: MaterialStateProperty.all(
+                        const EdgeInsets.symmetric(
+                          horizontal: 48,
+                          vertical: 14,
+                        ),
+                      ),
+                      backgroundColor: MaterialStateProperty.all(
+                        connState == AppConnectionState.connected
+                            ? Colors.brown
+                            : Colors.teal,
+                      ),
+                    ),
+                    child: Text(
+                      connState == AppConnectionState.connected
+                          ? kStrDisconnect
+                          : kStrConnect,
+                    ),
                   ),
-                ),
-                backgroundColor: MaterialStateProperty.all(Colors.teal),
-              ),
-              child: const Text(kStrConnect),
-            ),
           ],
         ),
       ),
