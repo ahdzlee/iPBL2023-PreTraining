@@ -11,6 +11,7 @@ class MqttClientManager {
   final String username;
   final String password;
   final String clientId;
+  final bool useSecure;
 
   final MqttServerClient _client;
 
@@ -20,6 +21,7 @@ class MqttClientManager {
     required this.username,
     required this.password,
     required this.clientId,
+    this.useSecure = false,
   }) : _client = MqttServerClient.withPort(server, clientId, port);
 
   Future<void> connect() async {
@@ -34,7 +36,7 @@ class MqttClientManager {
     final connMessage =
         MqttConnectMessage().startClean().withWillQos(MqttQos.atLeastOnce);
     _client.connectionMessage = connMessage;
-    _client.secure = true;
+    _client.secure = useSecure;
 
     try {
       await _client.connect(username, password);
