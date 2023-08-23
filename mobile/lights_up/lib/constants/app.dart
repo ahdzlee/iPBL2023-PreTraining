@@ -11,6 +11,7 @@ const kStrPort = 'Port';
 const kStrUsername = 'Username';
 const kStrPassword = 'Password';
 const kStrClientId = 'Client ID';
+const kStrUseSecure = 'Use secure connection';
 const kStrConnect = 'CONNECT';
 const kStrDisconnect = 'DISCONNECT';
 const kStrConnected = 'Connected';
