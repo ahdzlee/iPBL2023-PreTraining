@@ -41,6 +41,7 @@ class BrokerView extends HookConsumerWidget {
     final username = useRef('');
     final password = useRef('');
     final clientId = useRef('');
+    final useSecure = useState(false);
 
     useEffect(() {
       serverController.addListener(() {
@@ -84,6 +85,7 @@ class BrokerView extends HookConsumerWidget {
         username: username.value,
         password: password.value,
         clientId: clientId.value,
+        useSecure: useSecure.value,
       );
 
       final isConnected = ref.read(isConnectedProvider);
@@ -190,7 +192,11 @@ class BrokerView extends HookConsumerWidget {
                 labelText: kStrClientId,
               ),
             ),
-            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text(kStrUseSecure),
+              value: useSecure.value,
+              onChanged: (value) => useSecure.value = value,
+            ),
             connState == AppConnectionState.connecting
                 ? const CircularProgressIndicator()
                 : ElevatedButton(
