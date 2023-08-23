@@ -34,6 +34,7 @@ class MqttClientManager {
     final connMessage =
         MqttConnectMessage().startClean().withWillQos(MqttQos.atLeastOnce);
     _client.connectionMessage = connMessage;
+    _client.secure = true;
 
     try {
       await _client.connect(username, password);
